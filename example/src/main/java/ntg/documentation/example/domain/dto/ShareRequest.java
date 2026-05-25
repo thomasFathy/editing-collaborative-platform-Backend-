@@ -9,6 +9,6 @@ import java.util.UUID;
 @Getter
 @Setter
 public class ShareRequest {
-    private UUID userId;
+    private String email;
     private DocumentShare.Role role;
 }

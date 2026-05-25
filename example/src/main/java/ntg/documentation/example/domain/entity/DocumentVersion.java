@@ -21,8 +21,7 @@ public class DocumentVersion extends BaseEntity {
     @JoinColumn(name = "document_id", nullable = false)
     private Document document;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false)

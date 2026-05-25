@@ -11,10 +11,8 @@ import java.util.UUID;
 public class EditOperationMessage {
 
     private UUID documentId;
-
     private String opId;
     private String clientId;
-
     private DocumentOperation.OperationType type;
     private Integer position;
     private String character;

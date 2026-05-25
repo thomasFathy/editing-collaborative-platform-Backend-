@@ -5,6 +5,8 @@ import ntg.documentation.example.domain.dto.CreateDocumentRequest;
 import ntg.documentation.example.domain.dto.DocumentResponse;
 import ntg.documentation.example.domain.entity.Document;
 import ntg.documentation.example.service.DocumentService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -21,6 +23,10 @@ public class DocumentController {
     @PostMapping
     public DocumentResponse create(@RequestBody CreateDocumentRequest request,
                                    Principal principal) {
+
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//        System.out.println("Authentication: " + auth);
+//        if(principal==null) System.out.println("zft");
 
         UUID userId = UUID.fromString(principal.getName());
 
@@ -39,6 +45,7 @@ public class DocumentController {
 
         UUID userId = UUID.fromString(principal.getName());
 
-        return documentService.getDocument(id, userId);
+        return documentService.getDocument(id);
     }
+
 }

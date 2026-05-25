@@ -25,26 +25,28 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentContentRepository documentContentRepository;
     private final PermissionService permissionService;
 
-
     @Transactional
     @Override
     public DocumentResponse createDocument(String title, UUID userId) {
-
         User owner = userRepository.findById(userId)
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (documentRepository.existsByTitle(title)) {
+            throw new RuntimeException("Document already exists with this title");
+        }
 
         Document doc = new Document();
         doc.setTitle(title);
         doc.setOwner(owner);
 
-        documentRepository.save(doc);
+        doc = documentRepository.saveAndFlush(doc);
 
-        DocumentContent content =new DocumentContent();
+        DocumentContent content = new DocumentContent();
         content.setDocument(doc);
         content.setContent("");
         content.setVersion(0L);
 
-        documentContentRepository.save(content);
+        content = documentContentRepository.saveAndFlush(content);
 
         return new DocumentResponse(
                 doc.getId(),
@@ -54,29 +56,35 @@ public class DocumentServiceImpl implements DocumentService {
         );
     }
 
-
     @Override
     public Document findById(UUID id) {
         return documentRepository.findById(id).orElseThrow();
     }
 
     public List<Document> getUserDocuments(UUID userId) {
-        return documentRepository.findByOwnerId(userId);
+        return documentRepository.getUserDocuments(userId);
     }
 
-
+    @Transactional
     @Override
-    public DocumentResponse getDocument(UUID docId, UUID userId) {
-
-        if (!permissionService.canView(userId, docId)) {
-            throw new RuntimeException("No access");
-        }
-
+    public DocumentResponse getDocument(UUID docId) {
+        // 1. Find the document metadata
         Document doc = documentRepository.findById(docId)
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Document not found"));
 
-        DocumentContent content = documentContentRepository.findById(docId)
-                .orElseThrow();
+        // 2. 🔥 FIX: Use built-in findById() and wrap it in .orElse(null) so your self-healing block works!
+        DocumentContent content = documentContentRepository.findById(docId).orElse(null);
+
+        // 3. Self-healing null check block
+        if (content == null) {
+            DocumentContent newContent = new DocumentContent();
+            newContent.setDocument(doc);
+            newContent.setContent("");
+            newContent.setVersion(0L);
+
+            // Save and flush immediately to eliminate database racing conditions
+            content = documentContentRepository.saveAndFlush(newContent);
+        }
 
         return new DocumentResponse(
                 doc.getId(),

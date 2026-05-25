@@ -46,7 +46,6 @@ public class ErrorController {
         @ExceptionHandler(EmailAlreadyExistsException.class)
         public ResponseEntity<Map<String, String>> handleEmailConflict(EmailAlreadyExistsException ex) {
             Map<String, String> errorResponse = new HashMap<>();
-            // This 'message' key maps directly to 'err.error.message' in Angular
             errorResponse.put("message", ex.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
         }

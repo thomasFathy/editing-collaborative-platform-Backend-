@@ -27,8 +27,7 @@ public class DocumentContent {
     @JoinColumn(name = "document_id")
     private Document document;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false,columnDefinition = "Text")
     private String content;
 
     @Column(nullable = false)

@@ -32,7 +32,7 @@ public class AuthService{
                 .build();
         userRepository.save(user);
 
-        String token= jwtService.generateToken(user.getId());
+        String token= jwtService.generateToken(user.getId(), user.getEmail());
         return new AuthResponse(token);
     }
 
@@ -45,7 +45,7 @@ public class AuthService{
             throw new RuntimeException("Password doesn't match");
         }
 
-        String token = jwtService.generateToken(user.getId());
+        String token = jwtService.generateToken(user.getId(), user.getEmail());
 
         return new AuthResponse(token);
     }

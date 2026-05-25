@@ -8,5 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentContentRepository extends JpaRepository<DocumentContent, UUID> {
+//    DocumentContent saveDocumentContentManual(UUID documentId);
 
 }

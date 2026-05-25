@@ -11,36 +11,32 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/version")
+@RequestMapping("/api/version") // Prefixed with /api to separate from static routing
 public class VersionController {
 
     private final VersionService versioningService;
 
-    @PostMapping("/{docId}/versions")
-    public void createSnapshot(@PathVariable UUID docId,
-                               Principal principal){
-
-        UUID userId = UUID.fromString(principal.getName());
+    @PostMapping("/{docId}/snapshot")
+    public void createSnapshot(@PathVariable UUID docId, Principal principal) {
+        UUID userId = getUserIdFromPrincipal(principal);
         versioningService.createSnapshot(docId, userId);
     }
 
-    @GetMapping("/{docId}/versions")
-    public List<VersionResponse> getVersions(@PathVariable UUID docId,
-                                             Principal principal) {
-
-        UUID userId = UUID.fromString(principal.getName());
+    @GetMapping("/{docId}")
+    public List<VersionResponse> getVersions(@PathVariable UUID docId, Principal principal) {
+        UUID userId = getUserIdFromPrincipal(principal);
         return versioningService.getVersions(docId, userId);
     }
 
-
-    @PostMapping("/versions/{versionId}/restore")
-        public void restoreVersions(@PathVariable UUID docId,
-                                    Principal principal) {
-
-        UUID userId = UUID.fromString(principal.getName());
-         versioningService.restoreVersion(docId, userId);
-
-
+    @PostMapping("/restore/{versionId}")
+    public void restoreVersions(@PathVariable UUID versionId, Principal principal) {
+        UUID userId = getUserIdFromPrincipal(principal);
+        versioningService.restoreVersion(versionId, userId);
     }
-
+    private UUID getUserIdFromPrincipal(Principal principal) {
+        if (principal == null) {
+            throw new RuntimeException("Unauthorized user context");
+        }
+        return UUID.fromString(principal.getName());
+    }
 }

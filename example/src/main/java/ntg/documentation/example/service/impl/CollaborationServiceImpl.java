@@ -1,25 +1,29 @@
 package ntg.documentation.example.service.impl;
 
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
+import ntg.documentation.example.domain.dto.CursorMessage;
+import ntg.documentation.example.domain.dto.DocumentSyncMessage;
 import ntg.documentation.example.domain.dto.EditOperationMessage;
-import ntg.documentation.example.domain.dto.OperationBroadcast;
 import ntg.documentation.example.domain.entity.Document;
 import ntg.documentation.example.domain.entity.DocumentContent;
 import ntg.documentation.example.domain.entity.DocumentOperation;
-import ntg.documentation.example.domain.entity.User;
 import ntg.documentation.example.repository.DocumentContentRepository;
 import ntg.documentation.example.repository.DocumentOperationRepository;
 import ntg.documentation.example.repository.DocumentRepository;
 import ntg.documentation.example.service.CollaborationService;
+import ntg.documentation.example.service.DocumentContentService;
 import ntg.documentation.example.service.PermissionService;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+
 @Service
 @RequiredArgsConstructor
+@Getter
+@Setter
 public class CollaborationServiceImpl implements CollaborationService {
 
     private final DocumentOperationRepository operationRepo;
@@ -27,71 +31,44 @@ public class CollaborationServiceImpl implements CollaborationService {
     private final DocumentRepository documentRepo;
     private final SimpMessagingTemplate messagingTemplate;
     private final PermissionService permissionService;
+    private final DocumentContentService contentService;
 
-    @Transactional
     @Override
+    @Transactional
     public void processOperation(UUID docId, UUID userId, EditOperationMessage msg) {
+        // Verify document structure state context exists
+        documentRepo.findById(docId)
+                .orElseThrow(() -> new RuntimeException("Document metadata record not found"));
 
-        if (!permissionService.canEdit(userId, docId)) {
-            throw new RuntimeException("No edit permission");
+        // 🔥 FIX 1: Use the clean getter on your service layer rather than sending over the whole operation message
+        DocumentContent documentContent = contentService.getContent(docId);
+        if (documentContent == null) {
+            throw new RuntimeException("Document content container context missing");
         }
 
-        if (operationRepo.existsByDocumentIdAndOpId(docId, msg.getOpId())) {
-            return;
-        }
+        String currentContent = documentContent.getContent() != null ? documentContent.getContent() : "";
 
-        Document document = documentRepo.findById(docId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+        // 🔥 FIX 2: Use your dedicated 'applyOperation' helper method below instead of risky manual text splitting
+        String result = applyOperation(currentContent, msg);
 
-        // Save operation (event log)
-        DocumentOperation op = new DocumentOperation();
-        op.setDocument(document);
-        op.setUser(new User());
-        op.getUser().setId(userId);
+        // Update the managed state entity values cleanly
+        documentContent.setContent(result);
+        contentRepo.save(documentContent);
 
-        op.setOperationType(mapType(msg.getType()));
-        op.setPosition(msg.getPosition());
-        op.setCharacter(msg.getCharacter());
-        op.setOpId(msg.getOpId());
-        op.setClientId(msg.getClientId());
-
-        operationRepo.save(op);
-
-        // apply operation to current content
-
-        DocumentContent content = contentRepo.findById(docId)
-                .orElseThrow(() -> new RuntimeException("Content not found"));
-
-        String updated = applyOperation(content.getContent(), msg);
-
-        content.setContent(updated);
-        content.setVersion(content.getVersion() + 1);
-
-        contentRepo.save(content);
-
-        // broadcast to all subscribers
-        OperationBroadcast broadcast = new OperationBroadcast(
-                docId,
-                msg.getOpId(),
-                msg.getClientId(),
-                msg.getType(),
-                msg.getPosition(),
-                msg.getCharacter(),
-                userId
-        );
-
-        messagingTemplate.convertAndSend(
-                "/topic/doc/" + docId,
-                broadcast
-        );
-
+        // 🔥 FIX 3: Broadcast out text payloads instantly directly on the topic Angular is listening to
+        messagingTemplate.convertAndSend("/topic/doc/" + docId, msg);
     }
 
+    @Override
+    public void handleCursor(UUID docId, CursorMessage msg) {
+        messagingTemplate.convertAndSend(
+                "/topic/doc/" + docId + "/cursor",
+                msg
+        );
+    }
 
     private String applyOperation(String content, EditOperationMessage msg) {
-
         StringBuilder sb = new StringBuilder(content);
-
         int pos = msg.getPosition();
 
         if (pos < 0) pos = 0;
@@ -114,16 +91,28 @@ public class CollaborationServiceImpl implements CollaborationService {
         return sb.toString();
     }
 
+    @Override
+    public DocumentContent getDocumentContent(UUID docId) {
+        // 🔥 FIX 4: Call your custom service layer getter interface target matching signature design rules
+        return contentService.getContent(docId);
+    }
+
+    @Override
+    public void broadcastToDoc(UUID docId, Object payload) {
+        messagingTemplate.convertAndSend("/topic/doc/" + docId, payload);
+    }
+
+    @Override
+    public void syncDocument(UUID docId, DocumentSyncMessage message) {
+        messagingTemplate.convertAndSend(
+                "/topic/doc/" + docId,
+                message
+        );
+    }
+
     private DocumentOperation.OperationType mapType(DocumentOperation.OperationType type) {
         return type == DocumentOperation.OperationType.INSERT
                 ? DocumentOperation.OperationType.INSERT
                 : DocumentOperation.OperationType.DELETE;
     }
 }
-
-
-
-
-
-
-

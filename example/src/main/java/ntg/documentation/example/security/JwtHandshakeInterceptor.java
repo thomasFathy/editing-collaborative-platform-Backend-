@@ -22,7 +22,6 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {// this in
                                    ServerHttpResponse response,
                                    WebSocketHandler wsHandler,
                                    Map<String, Object> attributes) {
-//
         String token = extractToken(request);
 
         if (token != null && jwtService.isValid(token)) {

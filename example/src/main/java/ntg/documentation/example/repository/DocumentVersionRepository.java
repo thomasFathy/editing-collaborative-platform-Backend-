@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, UUID> {
 
-    List<DocumentVersion> findByDocumentIdOrderByCreatedAtDesc(UUID documentId);
+//    List<DocumentVersion> findByDocumentIdOrderByCreatedAtDesc(UUID documentId);
+    List<DocumentVersion> findByDocumentIdOrderByVersionDesc(UUID documentId);
 }

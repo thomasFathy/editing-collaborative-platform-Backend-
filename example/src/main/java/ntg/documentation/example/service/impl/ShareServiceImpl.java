@@ -31,7 +31,8 @@ public class ShareServiceImpl implements ShareService {
             throw new RuntimeException("Only owner can share");
         }
 
-        User user = userRepository.findById(req.getUserId()).orElseThrow();
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new RuntimeException("No account found with email: " + req.getEmail()));
 
         DocumentShare share = new DocumentShare();
 

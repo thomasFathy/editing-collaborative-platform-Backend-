@@ -21,5 +21,4 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String passwordHash;
 
-    // no List of documents becausie it's uniderictional reltionship
 }
